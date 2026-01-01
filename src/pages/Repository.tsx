@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase, type Post } from '../lib/supabase';
 import { format } from 'date-fns';
-import { Eye, EyeOff, FileText, Plus, Search, Clock, ChevronRight, Filter, BookOpen, Layers, PenTool, StickyNote, Trash2, Heart } from 'lucide-react';
+import { Eye, EyeOff, Plus, Search, ChevronRight, Filter, BookOpen, Layers, StickyNote, Trash2, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { calculateReadingTime, cn } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { useToast } from '../components/ui/Toast';
+import { useLanguage } from '../lib/language';
 
 export default function Repository() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -16,6 +17,7 @@ export default function Repository() {
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('All');
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   useEffect(() => {
     checkUser();
@@ -133,8 +135,13 @@ export default function Repository() {
     );
   }
 
-  const tabs = ['All', 'Catatan', 'Penelitian', 'Bahasan'];
-  if (isAdmin) tabs.push('Drafts');
+  const tabs = [
+      { id: 'All', label: t('repo.tabs.all') },
+      { id: 'Catatan', label: t('repo.tabs.notes') },
+      { id: 'Penelitian', label: t('repo.tabs.research') },
+      { id: 'Bahasan', label: t('repo.tabs.discussion') }
+  ];
+  if (isAdmin) tabs.push({ id: 'Drafts', label: t('repo.tabs.drafts') });
 
   return (
     <div className="min-h-screen pt-28 px-5 md:px-8 max-w-6xl mx-auto pb-20">
@@ -143,17 +150,17 @@ export default function Repository() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
             <h1 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-2">
-                {isAdmin ? "Admin Dashboard" : "Repository"}
+                {isAdmin ? t('repo.adminTitle') : t('repo.title')}
             </h1>
             <p className="text-muted-foreground max-w-md">
-                {isAdmin ? "Manage your digital garden. Track stats, edit posts, and publish new research." : "A collection of notes, research, and discussions."}
+                {isAdmin ? t('repo.adminDesc') : t('repo.desc')}
             </p>
         </div>
         
         {isAdmin && (
             <Link to="/editor/new" className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20 group">
                 <Plus size={20} className="group-hover:rotate-90 transition-transform" /> 
-                New Entry
+                {t('repo.newEntry')}
             </Link>
         )}
       </div>
@@ -164,28 +171,28 @@ export default function Repository() {
             <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/30 transition-colors">
                 <div className="flex justify-between items-start mb-4">
                     <div className="p-2 bg-primary/10 text-primary rounded-lg"><Layers size={20} /></div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Total</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">{t('repo.stats.total')}</span>
                 </div>
                 <h3 className="text-3xl font-bold text-foreground">{stats.total}</h3>
             </div>
             <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/30 transition-colors">
                 <div className="flex justify-between items-start mb-4">
                     <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg"><Eye size={20} /></div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Public</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">{t('repo.stats.public')}</span>
                 </div>
                 <h3 className="text-3xl font-bold text-foreground">{stats.public}</h3>
             </div>
             <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/30 transition-colors">
                 <div className="flex justify-between items-start mb-4">
                     <div className="p-2 bg-orange-500/10 text-orange-600 rounded-lg"><StickyNote size={20} /></div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Drafts</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">{t('repo.stats.drafts')}</span>
                 </div>
                 <h3 className="text-3xl font-bold text-foreground">{stats.drafts}</h3>
             </div>
             <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/30 transition-colors">
                 <div className="flex justify-between items-start mb-4">
                     <div className="p-2 bg-purple-500/10 text-purple-600 rounded-lg"><BookOpen size={20} /></div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Research</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase">{t('repo.stats.research')}</span>
                 </div>
                 <h3 className="text-3xl font-bold text-foreground">{stats.research}</h3>
             </div>
@@ -197,14 +204,14 @@ export default function Repository() {
         <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 no-scrollbar">
             {tabs.map(tab => (
                 <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
                     className={cn(
                         "px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap",
-                        activeTab === tab ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        activeTab === tab.id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                     )}
                 >
-                    {tab}
+                    {tab.label}
                 </button>
             ))}
         </div>
@@ -213,7 +220,7 @@ export default function Repository() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
             <input 
                 type="text" 
-                placeholder="Search repository..." 
+                placeholder={t('repo.search')} 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-secondary/50 border border-transparent rounded-lg py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
@@ -285,14 +292,14 @@ export default function Repository() {
                                 <button 
                                     onClick={(e) => toggleVisibility(e, post)}
                                     className={cn("p-2 rounded-full hover:bg-secondary transition-colors", post.is_public ? "text-emerald-500" : "text-orange-500")}
-                                    title={post.is_public ? "Make Private" : "Make Public"}
+                                    title={post.is_public ? t('repo.makePrivate') : t('repo.makePublic')}
                                 >
                                     {post.is_public ? <Eye size={16} /> : <EyeOff size={16} />}
                                 </button>
                                 <button 
                                     onClick={(e) => handleDelete(e, post.id)}
                                     className="p-2 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                                    title="Delete Post"
+                                    title={t('repo.delete')}
                                 >
                                     <Trash2 size={16} />
                                 </button>
@@ -314,10 +321,10 @@ export default function Repository() {
                 <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
                     <Filter size={24} />
                 </div>
-                <p className="font-medium">No entries found matching your criteria.</p>
+                <p className="font-medium">{t('repo.noEntries')}</p>
                 {isAdmin && (
                     <Link to="/editor/new" className="text-primary text-sm font-bold mt-2 inline-block hover:underline">
-                        Create new entry
+                        {t('repo.newEntry')}
                     </Link>
                 )}
             </div>

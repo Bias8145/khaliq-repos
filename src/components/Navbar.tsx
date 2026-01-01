@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, LogOut, PenTool, Home, BookOpen, Sun, Moon, Feather, Instagram, Github, ArrowRight, Type, Settings2, RefreshCw } from 'lucide-react';
+import { LogOut, PenTool, Home, BookOpen, Sun, Moon, Feather, Instagram, Github, ArrowRight, Type, Settings2, RefreshCw, Languages } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from '../lib/theme';
 import { usePreferences } from '../lib/preferences';
+import { useLanguage } from '../lib/language';
 import { cn } from '../lib/utils';
 
 export default function Navbar() {
@@ -13,6 +14,7 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const { theme, setTheme } = useTheme();
   const { fontSize, setFontSize } = usePreferences();
+  const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const fontSettingsRef = useRef<HTMLDivElement>(null);
@@ -26,7 +28,6 @@ export default function Navbar() {
       setUser(session?.user ?? null);
     });
 
-    // Click outside to close font settings
     const handleClickOutside = (event: MouseEvent) => {
         if (fontSettingsRef.current && !fontSettingsRef.current.contains(event.target as Node)) {
             setShowFontSettings(false);
@@ -47,11 +48,10 @@ export default function Navbar() {
   };
 
   const navItems = [
-    { name: 'Home', path: '/', icon: Home, desc: "Return to landing page" },
-    { name: 'Repository', path: '/repo', icon: BookOpen, desc: "Browse notes & research" },
+    { name: t('nav.home'), path: '/', icon: Home, desc: t('nav.homeDesc') },
+    { name: t('nav.repository'), path: '/repo', icon: BookOpen, desc: t('nav.repoDesc') },
   ];
 
-  // Lock body scroll when menu is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -66,15 +66,13 @@ export default function Navbar() {
         <div className="max-w-6xl mx-auto px-5 md:px-6 h-16 md:h-20 flex items-center justify-between">
           
           <Link to="/" className="flex items-center gap-3 group z-50 relative">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg group-hover:shadow-primary/20 border border-primary/20">
-              <Feather size={18} strokeWidth={2} className="group-hover:-rotate-12 transition-transform duration-300" />
-            </div>
+            <Feather size={24} strokeWidth={2} className="text-primary group-hover:-rotate-12 transition-transform duration-300" />
             <div className="flex flex-col">
               <span className="font-serif font-bold text-base md:text-lg leading-none text-foreground tracking-tight group-hover:text-primary transition-colors">
                 Khaliq Repository
               </span>
               <span className="text-[8px] md:text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium mt-1">
-                Digital Garden
+                {t('nav.digitalGarden')}
               </span>
             </div>
           </Link>
@@ -103,7 +101,7 @@ export default function Navbar() {
 
             <div className="flex items-center gap-3 pl-4 border-l border-border/50 relative">
                 
-                {/* Advanced Font Settings Toggle */}
+                {/* Advanced Settings Toggle */}
                 <div className="relative" ref={fontSettingsRef}>
                     <button 
                         onClick={() => setShowFontSettings(!showFontSettings)}
@@ -111,9 +109,9 @@ export default function Navbar() {
                             "p-2.5 rounded-full transition-colors relative group",
                             showFontSettings ? "bg-primary text-primary-foreground" : "hover:bg-secondary text-muted-foreground hover:text-foreground"
                         )}
-                        title="Display Settings"
+                        title={t('nav.settings')}
                     >
-                        <Type size={18} />
+                        <Settings2 size={18} />
                     </button>
 
                     <AnimatePresence>
@@ -125,13 +123,36 @@ export default function Navbar() {
                                 className="absolute top-full right-0 mt-4 w-72 bg-card border border-border rounded-2xl shadow-xl p-5 z-50"
                             >
                                 <div className="flex items-center justify-between mb-4 pb-2 border-b border-border">
-                                    <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Display Settings</span>
+                                    <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">{t('nav.settings')}</span>
                                     <button onClick={() => setFontSize(16)} className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1">
                                         <RefreshCw size={10} /> Reset
                                     </button>
                                 </div>
                                 
                                 <div className="space-y-4">
+                                    {/* Language Switcher */}
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-foreground flex items-center gap-2">
+                                            <Languages size={14} /> {t('nav.language')}
+                                        </span>
+                                        <div className="flex bg-secondary rounded-lg p-1">
+                                            <button 
+                                                onClick={() => setLanguage('en')}
+                                                className={cn("px-3 py-1 rounded-md text-xs font-bold transition-all", language === 'en' ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground")}
+                                            >
+                                                EN
+                                            </button>
+                                            <button 
+                                                onClick={() => setLanguage('id')}
+                                                className={cn("px-3 py-1 rounded-md text-xs font-bold transition-all", language === 'id' ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground")}
+                                            >
+                                                ID
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px bg-border/50"></div>
+
                                     <div>
                                         <div className="flex justify-between mb-2">
                                             <span className="text-xs font-bold text-foreground">Font Size</span>
@@ -175,12 +196,12 @@ export default function Navbar() {
                             className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5"
                         >
                             <PenTool size={14} />
-                            Write
+                            {t('nav.write')}
                         </Link>
                         <button 
                             onClick={handleLogout} 
                             className="p-2.5 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                            title="Sign Out"
+                            title={t('nav.signOut')}
                         >
                             <LogOut size={18} />
                         </button>
@@ -189,7 +210,7 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile Toggle */}
+          {/* Mobile Toggle & Actions */}
           <div className="flex items-center gap-2 md:hidden">
              <button 
                 onClick={() => setShowFontSettings(!showFontSettings)}
@@ -197,27 +218,32 @@ export default function Navbar() {
              >
                 <Settings2 size={20} />
              </button>
+             
              <button 
                 onClick={() => setIsOpen(!isOpen)} 
-                className="p-2 text-foreground hover:bg-secondary rounded-full transition-colors relative z-50"
+                className="p-2 text-foreground hover:bg-secondary rounded-full transition-colors relative z-50 w-10 h-10 flex items-center justify-center group"
+                aria-label="Toggle Menu"
             >
-                <AnimatePresence mode='wait'>
-                    {isOpen ? (
-                        <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
-                            <X size={24} />
-                        </motion.div>
-                    ) : (
-                        <motion.div key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}>
-                            <Menu size={24} />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                <div className="relative w-5 h-4 flex flex-col justify-between">
+                    <motion.span 
+                        animate={isOpen ? { rotate: 45, y: 8 } : { rotate: 0, y: 0 }}
+                        className="w-full h-0.5 bg-foreground rounded-full origin-left"
+                    />
+                    <motion.span 
+                        animate={isOpen ? { opacity: 0, x: -10 } : { opacity: 1, x: 0 }}
+                        className="w-3/4 h-0.5 bg-foreground rounded-full self-end group-hover:w-full transition-all"
+                    />
+                    <motion.span 
+                        animate={isOpen ? { rotate: -45, y: -8 } : { rotate: 0, y: 0 }}
+                        className="w-full h-0.5 bg-foreground rounded-full origin-left"
+                    />
+                </div>
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Mobile Font Settings Drawer */}
+      {/* Mobile Settings Drawer */}
       <AnimatePresence>
         {showFontSettings && (
             <motion.div
@@ -227,11 +253,33 @@ export default function Navbar() {
                 className="fixed top-16 left-0 right-0 z-40 bg-card border-b border-border p-6 shadow-xl md:hidden"
             >
                 <div className="flex items-center justify-between mb-6">
-                    <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Display Settings</span>
-                    <button onClick={() => setShowFontSettings(false)}><X size={18} className="text-muted-foreground" /></button>
+                    <span className="text-xs font-bold uppercase text-muted-foreground tracking-wider">{t('nav.settings')}</span>
                 </div>
                 
                 <div className="space-y-6">
+                    {/* Mobile Language Switcher */}
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-foreground flex items-center gap-2">
+                            <Languages size={16} /> {t('nav.language')}
+                        </span>
+                        <div className="flex bg-secondary rounded-lg p-1">
+                            <button 
+                                onClick={() => setLanguage('en')}
+                                className={cn("px-4 py-2 rounded-md text-xs font-bold transition-all", language === 'en' ? "bg-background shadow-sm text-primary" : "text-muted-foreground")}
+                            >
+                                English
+                            </button>
+                            <button 
+                                onClick={() => setLanguage('id')}
+                                className={cn("px-4 py-2 rounded-md text-xs font-bold transition-all", language === 'id' ? "bg-background shadow-sm text-primary" : "text-muted-foreground")}
+                            >
+                                Indonesia
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="h-px bg-border/50"></div>
+
                     <div>
                         <div className="flex justify-between mb-2">
                              <span className="text-sm font-bold text-foreground">Font Size</span>
@@ -266,7 +314,7 @@ export default function Navbar() {
         )}
       </AnimatePresence>
 
-      {/* Cinematic Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -276,7 +324,6 @@ export default function Navbar() {
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-40 bg-background/95 backdrop-blur-3xl md:hidden flex flex-col pt-24 px-6 pb-10 overflow-y-auto"
           >
-            {/* Background Decor */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[100px] -z-10"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/50 rounded-full blur-[100px] -z-10"></div>
 
@@ -325,7 +372,7 @@ export default function Navbar() {
                         className="flex items-center justify-center gap-3 w-full p-4 rounded-2xl bg-primary text-primary-foreground text-lg font-bold shadow-xl shadow-primary/20 mt-2"
                         >
                         <PenTool size={20} />
-                        Write New Entry
+                        {t('nav.write')}
                         </Link>
                     </motion.div>
                 )}
@@ -353,11 +400,11 @@ export default function Navbar() {
                     
                     {user ? (
                         <button onClick={handleLogout} className="text-sm font-bold text-destructive flex items-center gap-2">
-                            <LogOut size={18} /> Sign Out
+                            <LogOut size={18} /> {t('nav.signOut')}
                         </button>
                     ) : (
                         <Link to="/login" onClick={() => setIsOpen(false)} className="text-sm font-bold text-primary flex items-center gap-2">
-                            Admin Login <ArrowRight size={14} />
+                            {t('nav.adminLogin')} <ArrowRight size={14} />
                         </Link>
                     )}
                 </div>

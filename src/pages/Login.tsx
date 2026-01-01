@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Lock, User, AlertCircle, Loader2, ShieldCheck, Mail } from 'lucide-react';
+import { Lock, User, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../lib/language';
 
 export default function Login() {
   const [input, setInput] = useState('');
@@ -10,9 +11,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // Default mapping for convenience, but allow override
-  const DEFAULT_DOMAIN = '@bias-repo.com';
+  const DEFAULT_DOMAIN = '@khaliq-repo.com';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,14 +23,10 @@ export default function Login() {
 
     let email = input.trim();
     
-    // Smart Email Detection: If no '@', assume it's a username and append default domain
-    // BUT, if the user already has an account with a different email, they should type the full email.
     if (!email.includes('@')) {
-        // Check if it's the specific admin user
         if (email === '2.khaliq') {
             email = `2.khaliq${DEFAULT_DOMAIN}`;
         } else {
-            // Or just try appending the domain
             email = `${email}${DEFAULT_DOMAIN}`;
         }
     }
@@ -71,16 +69,16 @@ export default function Login() {
                     <ShieldCheck size={24} />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                    Admin Access
+                    {t('auth.adminAccess')}
                 </h2>
                 <p className="text-muted-foreground text-sm mt-2">
-                    Enter your credentials to manage the repository.
+                    {t('auth.enterCreds')}
                 </p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase ml-1">Email or Username</label>
+                    <label className="text-xs font-bold text-muted-foreground uppercase ml-1">{t('auth.emailOrUser')}</label>
                     <div className="relative group">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                         <input
@@ -93,12 +91,12 @@ export default function Login() {
                         />
                     </div>
                     <p className="text-[10px] text-muted-foreground ml-1">
-                        *If using just username, we assume <strong>@bias-repo.com</strong>
+                        {t('auth.usernameNote')} <strong>@khaliq-repo.com</strong>
                     </p>
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase ml-1">Password</label>
+                    <label className="text-xs font-bold text-muted-foreground uppercase ml-1">{t('auth.password')}</label>
                     <div className="relative group">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" size={18} />
                         <input
@@ -131,13 +129,13 @@ export default function Login() {
                     disabled={loading}
                     className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-primary/20"
                 >
-                    {loading ? <Loader2 size={18} className="animate-spin" /> : 'Sign In'}
+                    {loading ? <Loader2 size={18} className="animate-spin" /> : t('auth.signIn')}
                 </button>
             </form>
 
             <div className="mt-6 text-center">
                  <p className="text-xs text-muted-foreground">
-                    Trouble logging in? Ensure your account exists in Supabase Auth.
+                    {t('auth.trouble')}
                  </p>
             </div>
         </div>

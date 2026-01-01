@@ -1,9 +1,9 @@
+/* Import Inter for maximum readability and simplicity */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import Inter for maximum readability and simplicity */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -124,4 +124,71 @@ input[type=range]::-webkit-slider-thumb {
 
 input[type=range]:focus {
   outline: none; 
+}
+
+/* PRINT STYLES */
+@media print {
+  @page {
+    margin: 2cm;
+  }
+
+  /* Hide everything that isn't the main content */
+  .no-print, 
+  nav, 
+  footer, 
+  aside, 
+  button, 
+  .fixed,
+  .sticky {
+    display: none !important;
+  }
+
+  /* Reset body styles for print */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure the article takes full width */
+  article {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Typography adjustments for print */
+  h1 {
+    font-size: 24pt !important;
+    margin-bottom: 1cm !important;
+    color: black !important;
+  }
+
+  p, li {
+    font-size: 12pt !important;
+    line-height: 1.5 !important;
+    color: black !important;
+    text-align: justify !important;
+  }
+
+  a {
+    text-decoration: underline !important;
+    color: black !important;
+  }
+  
+  /* Show URL after links */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+  }
+
+  /* Hide scrollbars */
+  ::-webkit-scrollbar {
+    display: none;
+  }
 }

@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 // Helper to simulate the specific username login mapping
 export const ADMIN_USERNAME = "2.khaliq";
-export const ADMIN_EMAIL_MAP = "2.khaliq@bias-repo.com"; // Internal mapping for Supabase
+export const ADMIN_EMAIL_MAP = "2.khaliq@khaliq-repo.com"; // Internal mapping for Supabase
 
 export function calculateReadingTime(text: string): number {
   const wordsPerMinute = 200;
