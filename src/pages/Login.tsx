@@ -14,7 +14,7 @@ export default function Login() {
   const { t } = useLanguage();
 
   // Default mapping for convenience, but allow override
-  const DEFAULT_DOMAIN = '@khaliq-repo.pages.dev';
+  const DEFAULT_DOMAIN = '@khaliq-repos.pages.dev';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,7 +91,7 @@ export default function Login() {
                         />
                     </div>
                     <p className="text-[10px] text-muted-foreground ml-1">
-                        {t('auth.usernameNote')} <strong>@khaliq-repo.pages.dev</strong>
+                        {t('auth.usernameNote')} <strong>@khaliq-repos.pages.dev</strong>
                     </p>
                 </div>
 
