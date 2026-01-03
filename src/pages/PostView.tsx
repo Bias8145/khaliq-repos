@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase, type Post } from '../lib/supabase';
 import { format } from 'date-fns';
-import { ArrowLeft, Edit, Clock, Share2, Printer, Heart, Link as LinkIcon, Twitter, Linkedin, MessageCircle, Download, ImageIcon, X, Loader2, Feather, Send, Check, Moon, Sun, RefreshCw, Maximize, Smartphone, Square, Layout, MousePointerClick, TextCursorInput, Globe, Microscope, Book, MessageSquareQuote, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, Clock, Share2, Printer, Heart, Link as LinkIcon, Twitter, Linkedin, MessageCircle, Download, ImageIcon, X, Loader2, Feather, Send, Check, Moon, Sun, RefreshCw, Maximize, Smartphone, Square, Layout, MousePointerClick, TextCursorInput, Globe, Microscope, Book, MessageSquareQuote, FileText, Pin } from 'lucide-react';
 import { calculateReadingTime } from '../lib/utils';
 import { motion, useScroll, useSpring, AnimatePresence } from 'framer-motion';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
@@ -337,6 +337,11 @@ export default function PostView() {
                         {post.subcategory && (
                             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-3 py-1 rounded-full bg-secondary">
                                 {post.subcategory}
+                            </span>
+                        )}
+                        {post.is_pinned && (
+                            <span className="text-xs font-bold uppercase tracking-wider text-primary px-3 py-1 rounded-full bg-primary/10 flex items-center gap-1">
+                                <Pin size={12} className="fill-current" /> Pinned
                             </span>
                         )}
                     </div>

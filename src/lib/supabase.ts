@@ -21,6 +21,7 @@ export type Post = {
   created_at: string;
   updated_at: string;
   is_public: boolean;
+  is_pinned?: boolean; // Added is_pinned
   status?: 'published' | 'draft';
   view_count: number;
   likes: number;

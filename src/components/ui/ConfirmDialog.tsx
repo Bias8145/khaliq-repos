@@ -48,7 +48,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               <div className="flex items-start gap-4">
                 <div className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
-                  type === 'danger' ? "bg-red-500/10 text-red-500" : "bg-primary/10 text-primary"
+                  // Use theme tokens for better consistency
+                  type === 'danger' ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
                 )}>
                   <AlertTriangle size={20} />
                 </div>
@@ -77,10 +78,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               <button
                 onClick={onConfirm}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-bold text-white shadow-lg transition-all hover:scale-105",
+                  "px-4 py-2 rounded-lg text-sm font-bold shadow-lg transition-all hover:scale-105",
+                  // Use theme tokens strictly
                   type === 'danger' 
-                    ? "bg-red-500 hover:bg-red-600 shadow-red-500/20" 
-                    : "bg-primary hover:bg-primary/90 shadow-primary/20"
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-destructive/20" 
+                    : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
                 )}
               >
                 {confirmText}

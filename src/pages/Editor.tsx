@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Save, ArrowLeft, Bold, Italic, Underline, List, ChevronDown, Layout, Globe, Lock, Hash, FileText, Eye, PenLine, Trash2, CheckCircle2, AlertTriangle, Tag } from 'lucide-react';
+import { Save, ArrowLeft, Bold, Italic, Underline, List, ChevronDown, Layout, Globe, Lock, Hash, FileText, Eye, PenLine, Trash2, CheckCircle2, AlertTriangle, Tag, Pin } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useToast } from '../components/ui/Toast';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { useLanguage } from '../lib/language';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 
 // Predefined lists for suggestions
 const CATEGORY_SUGGESTIONS = ["Catatan", "Penelitian", "Bahasan", "Jurnal", "Proyek"];
@@ -27,7 +28,13 @@ export default function Editor() {
   const [subcategory, setSubcategory] = useState('');
   const [status, setStatus] = useState<'published' | 'draft'>('published');
   const [isPublic, setIsPublic] = useState(true); // Default to public
+  const [isPinned, setIsPinned] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Dialog States
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [pendingSaveStatus, setPendingSaveStatus] = useState<'published' | 'draft' | null>(null);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -51,6 +58,7 @@ export default function Editor() {
           setExcerpt(data.excerpt || '');
           setStatus(data.status || (data.is_public ? 'published' : 'draft'));
           setIsPublic(data.is_public);
+          setIsPinned(data.is_pinned || false);
           setCategory(data.category || 'Catatan');
           setSubcategory(data.subcategory || '');
         }
@@ -59,13 +67,19 @@ export default function Editor() {
     checkUser();
   }, [id, navigate]);
 
-  const handleSave = async (newStatus?: 'published' | 'draft') => {
-    const finalStatus = newStatus || status;
-    
+  const initiateSave = (newStatus: 'published' | 'draft') => {
     if (!title.trim()) {
         toast("Please enter a title", "error");
         return;
     }
+    setPendingSaveStatus(newStatus);
+    setShowSaveDialog(true);
+  };
+
+  const handleSaveConfirmed = async () => {
+    const finalStatus = pendingSaveStatus || status;
+    setShowSaveDialog(false);
+    
     if (!userId) {
         toast("Session expired. Please login again.", "error");
         return;
@@ -79,6 +93,7 @@ export default function Editor() {
       excerpt,
       status: finalStatus,
       is_public: isPublic, // Explicit visibility control
+      is_pinned: isPinned,
       category,
       subcategory,
       author_id: userId,
@@ -107,13 +122,14 @@ export default function Editor() {
         toast(`Failed to save: ${err.message}`, "error");
     } finally {
         setLoading(false);
-        if (newStatus) setStatus(newStatus);
+        if (pendingSaveStatus) setStatus(pendingSaveStatus);
+        setPendingSaveStatus(null);
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteConfirmed = async () => {
     if (!id || id === 'new') return;
-    if (!window.confirm(t('editor.deleteConfirm'))) return;
+    setShowDeleteDialog(false);
 
     setLoading(true);
     try {
@@ -163,6 +179,29 @@ export default function Editor() {
   return (
     <div className="min-h-screen pt-24 px-5 md:px-8 max-w-5xl mx-auto pb-32">
       
+      {/* Delete Confirmation */}
+      <ConfirmDialog 
+        isOpen={showDeleteDialog}
+        title={t('editor.deleteConfirmTitle')}
+        message={t('editor.deleteConfirmMsg')}
+        confirmText={t('editor.confirm')}
+        cancelText={t('editor.cancel')}
+        onConfirm={handleDeleteConfirmed}
+        onCancel={() => setShowDeleteDialog(false)}
+      />
+
+      {/* Save Confirmation */}
+      <ConfirmDialog 
+        isOpen={showSaveDialog}
+        title={t('editor.saveConfirmTitle')}
+        message={t('editor.saveConfirmMsg')}
+        confirmText={t('editor.confirm')}
+        cancelText={t('editor.cancel')}
+        type="info"
+        onConfirm={handleSaveConfirmed}
+        onCancel={() => setShowSaveDialog(false)}
+      />
+
       {/* Top Bar */}
       <div className="flex justify-between items-center mb-8 sticky top-20 z-20 bg-background/80 backdrop-blur-md py-4 border-b border-border/50">
         <Link to="/repo" className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors group">
@@ -177,7 +216,7 @@ export default function Editor() {
                 {isPreview ? t('editor.edit') : t('editor.preview')}
             </button>
             <button 
-                onClick={() => handleSave('draft')}
+                onClick={() => initiateSave('draft')}
                 disabled={loading}
                 className="px-4 py-2 bg-secondary text-foreground font-bold rounded-lg hover:bg-secondary/80 transition-all text-xs flex items-center gap-2"
             >
@@ -185,7 +224,7 @@ export default function Editor() {
                 {t('editor.saveDraft')}
             </button>
             <button 
-                onClick={() => handleSave('published')}
+                onClick={() => initiateSave('published')}
                 disabled={loading}
                 className="px-5 py-2 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center gap-2 text-xs"
             >
@@ -281,6 +320,30 @@ export default function Editor() {
                                 : t('editor.privateDesc')}
                         </p>
                     </div>
+
+                    {/* Pin Toggle */}
+                    <div className="space-y-2 pt-2 border-t border-border">
+                         <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                                <Pin size={12} /> {t('editor.pinned')}
+                            </label>
+                            <button 
+                                onClick={() => setIsPinned(!isPinned)}
+                                className={cn(
+                                    "w-10 h-5 rounded-full relative transition-colors duration-300",
+                                    isPinned ? "bg-primary" : "bg-secondary"
+                                )}
+                            >
+                                <div className={cn(
+                                    "absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform duration-300 shadow-sm",
+                                    isPinned ? "translate-x-5" : "translate-x-0"
+                                )} />
+                            </button>
+                         </div>
+                         <p className="text-[10px] text-muted-foreground leading-tight">
+                            {t('editor.pinnedDesc')}
+                         </p>
+                    </div>
                 </div>
 
                 {/* Classification - IMPROVED WITH VISIBLE CHIPS */}
@@ -368,7 +431,7 @@ export default function Editor() {
                 {id && id !== 'new' && (
                     <div className="pt-6 mt-6 border-t border-border">
                         <button 
-                            onClick={handleDelete}
+                            onClick={() => setShowDeleteDialog(true)}
                             className="w-full py-3 rounded-lg border border-destructive/20 text-destructive hover:bg-destructive/5 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
                         >
                             <Trash2 size={14} /> {t('editor.delete')}

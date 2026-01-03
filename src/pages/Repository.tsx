@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase, type Post } from '../lib/supabase';
 import { format } from 'date-fns';
-import { Eye, EyeOff, Plus, Search, ChevronRight, Filter, Layers, Trash2, Heart, Users, MousePointerClick, Cpu, Database, TrendingUp, BookOpen, Archive } from 'lucide-react';
+import { Eye, EyeOff, Plus, Search, ChevronRight, Filter, Layers, Trash2, Heart, Users, MousePointerClick, Cpu, Database, TrendingUp, BookOpen, Archive, Pin, PinOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useToast } from '../components/ui/Toast';
@@ -68,9 +68,11 @@ export default function Repository() {
 
   const fetchPosts = async () => {
     try {
+      // Order by is_pinned first (descending), then created_at (descending)
       const { data, error } = await supabase
         .from('posts')
         .select('*')
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -132,6 +134,47 @@ export default function Repository() {
     }
   };
 
+  const togglePin = async (e: React.MouseEvent, post: Post) => {
+    e.preventDefault();
+    const newIsPinned = !post.is_pinned;
+
+    try {
+        const { error } = await supabase
+            .from('posts')
+            .update({ is_pinned: newIsPinned })
+            .eq('id', post.id);
+
+        if (error) throw error;
+
+        // Re-fetch to sort correctly or manually sort
+        const updatedPosts = posts.map(p => 
+            p.id === post.id ? { ...p, is_pinned: newIsPinned } : p
+        ).sort((a, b) => {
+            // Sort by pinned desc, then date desc
+            const aPinned = a.is_pinned ? 1 : 0;
+            const bPinned = b.is_pinned ? 1 : 0;
+            
+            if (aPinned !== bPinned) {
+                return bPinned - aPinned;
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        setPosts(updatedPosts);
+        // Force refresh filtered list
+        setFilteredPosts(updatedPosts.filter(p => {
+             if (!isAdmin && !p.is_public) return false;
+             if (activeTab !== 'All' && activeTab !== 'Drafts' && p.category !== activeTab) return false;
+             return true;
+        }));
+        
+        toast(newIsPinned ? t('repo.pinSuccess') : t('repo.unpinSuccess'), "info");
+    } catch (err: any) {
+        console.error(err);
+        toast(`Failed to update pin status: ${err.message}`, "error");
+    }
+  };
+
   useEffect(() => {
     let filtered = posts;
     
@@ -187,9 +230,10 @@ export default function Repository() {
     <div className="min-h-screen pt-28 px-5 md:px-8 max-w-6xl mx-auto pb-20">
       <ConfirmDialog 
         isOpen={!!deleteId}
-        title="Delete Post"
-        message="Are you sure you want to delete this post? This action cannot be undone and will remove all associated data."
-        confirmText="Delete"
+        title={t('repo.deleteTitle')}
+        message={t('repo.deleteMsg')}
+        confirmText={t('editor.confirm')}
+        cancelText={t('editor.cancel')}
         onConfirm={handleDelete}
         onCancel={() => setDeleteId(null)}
       />
@@ -350,11 +394,18 @@ export default function Repository() {
             <Link to={`/post/${post.id}`} className="block group">
               <div className={cn(
                   "bg-card border rounded-xl p-6 transition-all duration-300 relative overflow-hidden",
-                  post.status === 'draft' ? "border-orange-500/30 bg-orange-500/5" : "border-border hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30"
+                  post.status === 'draft' ? "border-orange-500/30 bg-orange-500/5" : "border-border hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30",
+                  post.is_pinned && "border-l-4 border-l-primary"
               )}>
                 {post.status === 'draft' && (
                     <div className="absolute top-0 right-0 px-3 py-1 bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider rounded-bl-xl">
                         Draft
+                    </div>
+                )}
+                
+                {post.is_pinned && !post.status && (
+                    <div className="absolute top-0 right-0 px-3 py-1 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded-bl-xl flex items-center gap-1">
+                        <Pin size={10} className="fill-current" /> Pinned
                     </div>
                 )}
                 
@@ -384,8 +435,9 @@ export default function Repository() {
 
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                     <div className="max-w-3xl w-full">
-                        <h3 className="text-xl font-serif font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                        <h3 className="text-xl font-serif font-bold text-foreground mb-2 group-hover:text-primary transition-colors flex items-center gap-2">
                             {post.title}
+                            {post.is_pinned && <Pin size={16} className="text-primary fill-primary rotate-45" />}
                         </h3>
                         <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed">
                             {post.excerpt || post.content.substring(0, 150) + "..."}
@@ -404,6 +456,13 @@ export default function Repository() {
                         
                         {isAdmin && (
                             <div className="flex items-center gap-2 border-l border-border pl-4 ml-2">
+                                <button 
+                                    onClick={(e) => togglePin(e, post)}
+                                    className={cn("p-2 rounded-full hover:bg-secondary transition-colors", post.is_pinned ? "text-primary" : "text-muted-foreground")}
+                                    title={post.is_pinned ? t('repo.unpin') : t('repo.pin')}
+                                >
+                                    {post.is_pinned ? <PinOff size={16} /> : <Pin size={16} />}
+                                </button>
                                 <button 
                                     onClick={(e) => toggleVisibility(e, post)}
                                     className={cn("p-2 rounded-full hover:bg-secondary transition-colors", post.is_public ? "text-emerald-500" : "text-orange-500")}
