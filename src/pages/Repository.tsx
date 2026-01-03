@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase, type Post } from '../lib/supabase';
 import { format } from 'date-fns';
-import { Eye, EyeOff, Plus, Search, ChevronRight, Filter, BookOpen, Layers, StickyNote, Trash2, Heart } from 'lucide-react';
+import { Eye, EyeOff, Plus, Search, ChevronRight, Filter, Layers, Trash2, Heart, Users, MousePointerClick, Cpu, Database, Sparkles, TrendingUp, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useToast } from '../components/ui/Toast';
@@ -14,20 +14,55 @@ export default function Repository() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('All');
+  
+  // Analytics State
+  const [siteVisits, setSiteVisits] = useState(0);
+  const [totalViews, setTotalViews] = useState(0);
+  const [totalLikes, setTotalLikes] = useState(0);
+  
+  // System Health
+  const [aiConfigured, setAiConfigured] = useState(false);
+
   const { toast } = useToast();
   const { t } = useLanguage();
 
   useEffect(() => {
     checkUser();
     fetchPosts();
+    fetchAnalytics(); // Fetch analytics for everyone
+    
+    // Check if AI key is present in env
+    const hasKey = import.meta.env.VITE_GEMINI_API_KEY && !import.meta.env.VITE_GEMINI_API_KEY.includes("YOUR_API_KEY");
+    setAiConfigured(!!hasKey);
   }, []);
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
     setIsAdmin(!!user);
+  };
+
+  const fetchAnalytics = async () => {
+    // Fetch Site Visits (Today)
+    const { data: visits } = await supabase
+        .from('site_visits')
+        .select('count')
+        .eq('date', new Date().toISOString().split('T')[0])
+        .single();
+    
+    if (visits) setSiteVisits(visits.count);
+
+    // Fetch Aggregated Post Stats
+    const { data: postsStats } = await supabase
+        .from('posts')
+        .select('view_count, likes');
+    
+    if (postsStats) {
+        const views = postsStats.reduce((acc, curr) => acc + (curr.view_count || 0), 0);
+        const likes = postsStats.reduce((acc, curr) => acc + (curr.likes || 0), 0);
+        setTotalViews(views);
+        setTotalLikes(likes);
+    }
   };
 
   const fetchPosts = async () => {
@@ -115,12 +150,10 @@ export default function Repository() {
     setFilteredPosts(filtered);
   }, [searchQuery, posts, isAdmin, loading, activeTab]);
 
-  // Stats for Dashboard
   const stats = {
     total: posts.length,
     public: posts.filter(p => p.is_public).length,
     drafts: posts.filter(p => p.status === 'draft').length,
-    notes: posts.filter(p => p.category === 'Catatan').length,
     research: posts.filter(p => p.category === 'Penelitian').length,
   };
 
@@ -150,10 +183,10 @@ export default function Repository() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
             <h1 className="text-3xl md:text-4xl font-serif font-bold text-foreground mb-2">
-                {isAdmin ? t('repo.adminTitle') : t('repo.title')}
+                {t('repo.title')}
             </h1>
             <p className="text-muted-foreground max-w-md">
-                {isAdmin ? t('repo.adminDesc') : t('repo.desc')}
+                {t('repo.desc')}
             </p>
         </div>
         
@@ -165,39 +198,98 @@ export default function Repository() {
         )}
       </div>
 
-      {/* Admin Stats Grid */}
-      {isAdmin && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/30 transition-colors">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 bg-primary/10 text-primary rounded-lg"><Layers size={20} /></div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase">{t('repo.stats.total')}</span>
+      {/* Stats Grid - Logic Split for Public vs Admin */}
+      <div className="space-y-6 mb-12">
+            {/* System Status Bar (Admin Only) */}
+            {isAdmin && (
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                    <div className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold border", aiConfigured ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-red-500/10 text-red-600 border-red-500/20")}>
+                        <Cpu size={14} /> AI System: {aiConfigured ? "Online" : "Missing Key"}
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                        <Database size={14} /> Database: Connected
+                    </div>
                 </div>
-                <h3 className="text-3xl font-bold text-foreground">{stats.total}</h3>
-            </div>
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/30 transition-colors">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg"><Eye size={20} /></div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase">{t('repo.stats.public')}</span>
+            )}
+
+            <div className={cn("grid gap-4", isAdmin ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4" : "grid-cols-1")}>
+                
+                {/* Total Content - Visible to Everyone */}
+                <div className={cn(
+                    "bg-card p-6 rounded-[24px] border border-border shadow-sm hover:shadow-md transition-all relative overflow-hidden group",
+                    !isAdmin && "flex items-center justify-between md:justify-start gap-8" // Special layout for public single card
+                )}>
+                    <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                        <Layers size={isAdmin ? 100 : 150} />
+                    </div>
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <Layers size={18} />
+                            <span className="text-xs font-bold uppercase tracking-wider">{t('repo.stats.total')}</span>
+                        </div>
+                        <h3 className="text-4xl font-serif font-bold text-foreground">{stats.public}</h3>
+                        <p className="text-xs text-muted-foreground mt-2">Published Entries</p>
+                    </div>
+                    
+                    {/* Extra decorative info for public view only */}
+                    {!isAdmin && (
+                        <div className="hidden md:block relative z-10 border-l border-border pl-8">
+                            <p className="text-sm text-muted-foreground max-w-xs">
+                                Browse through a curated collection of technical notes, research papers, and system architecture documentation.
+                            </p>
+                        </div>
+                    )}
                 </div>
-                <h3 className="text-3xl font-bold text-foreground">{stats.public}</h3>
+                
+                {/* Admin Only Stats */}
+                {isAdmin && (
+                    <>
+                        {/* Traffic Stats */}
+                        <div className="bg-[#E3F2FD] dark:bg-[#1E2A38] p-6 rounded-[24px] border border-blue-200/50 dark:border-blue-800/30 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                            <div className="absolute -bottom-4 -right-4 text-blue-500/10 group-hover:text-blue-500/20 transition-colors">
+                                <Users size={120} />
+                            </div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 mb-2 text-blue-600 dark:text-blue-400">
+                                    <TrendingUp size={18} />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Visitors (Today)</span>
+                                </div>
+                                <h3 className="text-4xl font-serif font-bold text-foreground">{siteVisits}</h3>
+                                <p className="text-xs text-blue-600/70 dark:text-blue-400/70 mt-2">Active readers</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-[#E8F5E9] dark:bg-[#1B3320] p-6 rounded-[24px] border border-emerald-200/50 dark:border-emerald-800/30 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                            <div className="absolute -bottom-4 -right-4 text-emerald-500/10 group-hover:text-emerald-500/20 transition-colors">
+                                <MousePointerClick size={120} />
+                            </div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 mb-2 text-emerald-600 dark:text-emerald-400">
+                                    <MousePointerClick size={18} />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Total Views</span>
+                                </div>
+                                <h3 className="text-4xl font-serif font-bold text-foreground">{totalViews}</h3>
+                                <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70 mt-2">All time reads</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-[#FFEBEE] dark:bg-[#3E1F21] p-6 rounded-[24px] border border-red-200/50 dark:border-red-800/30 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                            <div className="absolute -bottom-4 -right-4 text-red-500/10 group-hover:text-red-500/20 transition-colors">
+                                <Heart size={120} />
+                            </div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 mb-2 text-red-600 dark:text-red-400">
+                                    <Heart size={18} />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Appreciations</span>
+                                </div>
+                                <h3 className="text-4xl font-serif font-bold text-foreground">{totalLikes}</h3>
+                                <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-2">Community love</p>
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/30 transition-colors">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 bg-orange-500/10 text-orange-600 rounded-lg"><StickyNote size={20} /></div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase">{t('repo.stats.drafts')}</span>
-                </div>
-                <h3 className="text-3xl font-bold text-foreground">{stats.drafts}</h3>
-            </div>
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-sm hover:border-primary/30 transition-colors">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="p-2 bg-purple-500/10 text-purple-600 rounded-lg"><BookOpen size={20} /></div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase">{t('repo.stats.research')}</span>
-                </div>
-                <h3 className="text-3xl font-bold text-foreground">{stats.research}</h3>
-            </div>
-        </div>
-      )}
+      </div>
 
       {/* Filters & Search */}
       <div className="bg-card border border-border rounded-2xl p-4 mb-8 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center sticky top-24 z-30 backdrop-blur-md bg-card/90">
@@ -272,8 +364,8 @@ export default function Repository() {
                     </span>
                 </div>
 
-                <div className="flex justify-between items-end">
-                    <div className="max-w-3xl">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                    <div className="max-w-3xl w-full">
                         <h3 className="text-xl font-serif font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
                             {post.title}
                         </h3>
@@ -282,10 +374,16 @@ export default function Repository() {
                         </p>
                     </div>
                     
-                    <div className="hidden md:flex items-center gap-4 text-muted-foreground">
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Heart size={14} /> {post.likes || 0}
-                        </span>
+                    {/* Stats & Actions - Visible on Mobile now */}
+                    <div className="flex items-center justify-between w-full md:w-auto gap-4 text-muted-foreground mt-2 md:mt-0">
+                        <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Views">
+                                <Eye size={14} /> {post.view_count || 0}
+                            </span>
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Likes">
+                                <Heart size={14} /> {post.likes || 0}
+                            </span>
+                        </div>
                         
                         {isAdmin && (
                             <div className="flex items-center gap-2 border-l border-border pl-4 ml-2">
@@ -307,7 +405,7 @@ export default function Repository() {
                         )}
                         
                         {!isAdmin && (
-                            <ChevronRight size={20} className="text-muted-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                            <ChevronRight size={20} className="text-muted-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all ml-auto md:ml-0" />
                         )}
                     </div>
                 </div>

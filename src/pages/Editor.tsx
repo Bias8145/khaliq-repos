@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Save, ArrowLeft, Bold, Italic, Underline, List, ChevronDown, Layout, Globe, Lock, Hash, FileText, Eye, PenLine, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Save, ArrowLeft, Bold, Italic, Underline, List, ChevronDown, Layout, Globe, Lock, Hash, FileText, Eye, PenLine, Trash2, CheckCircle2, AlertTriangle, Tag } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useToast } from '../components/ui/Toast';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { useLanguage } from '../lib/language';
+
+// Predefined lists for suggestions
+const CATEGORY_SUGGESTIONS = ["Catatan", "Penelitian", "Bahasan", "Jurnal", "Proyek"];
+const SUBCATEGORY_SUGGESTIONS = ["Agama", "Sains", "Filsafat", "Teknologi", "Umum", "Android", "Water Treatment", "HSE"];
 
 export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
   
@@ -107,7 +113,7 @@ export default function Editor() {
 
   const handleDelete = async () => {
     if (!id || id === 'new') return;
-    if (!window.confirm("Are you sure you want to delete this post? This cannot be undone.")) return;
+    if (!window.confirm(t('editor.deleteConfirm'))) return;
 
     setLoading(true);
     try {
@@ -160,7 +166,7 @@ export default function Editor() {
       {/* Top Bar */}
       <div className="flex justify-between items-center mb-8 sticky top-20 z-20 bg-background/80 backdrop-blur-md py-4 border-b border-border/50">
         <Link to="/repo" className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors group">
-          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Back
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> {t('editor.back')}
         </Link>
         <div className="flex items-center gap-2">
             <button 
@@ -168,7 +174,7 @@ export default function Editor() {
                 className="px-4 py-2 bg-secondary/50 text-foreground font-bold rounded-lg hover:bg-secondary transition-all text-xs flex items-center gap-2 mr-2"
             >
                 {isPreview ? <PenLine size={14} /> : <Eye size={14} />}
-                {isPreview ? 'Edit' : 'Preview'}
+                {isPreview ? t('editor.edit') : t('editor.preview')}
             </button>
             <button 
                 onClick={() => handleSave('draft')}
@@ -176,7 +182,7 @@ export default function Editor() {
                 className="px-4 py-2 bg-secondary text-foreground font-bold rounded-lg hover:bg-secondary/80 transition-all text-xs flex items-center gap-2"
             >
                 <FileText size={14} />
-                Save Draft
+                {t('editor.saveDraft')}
             </button>
             <button 
                 onClick={() => handleSave('published')}
@@ -184,7 +190,7 @@ export default function Editor() {
                 className="px-5 py-2 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center gap-2 text-xs"
             >
                 <Save size={14} />
-                {loading ? 'Publishing...' : 'Publish'}
+                {loading ? t('editor.publishing') : t('editor.publish')}
             </button>
         </div>
       </div>
@@ -197,7 +203,7 @@ export default function Editor() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Post Title..."
+                placeholder={t('editor.titlePlaceholder')}
                 className="w-full bg-transparent border-none text-3xl md:text-5xl font-serif font-bold text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-0 px-0 leading-tight"
             />
 
@@ -225,7 +231,7 @@ export default function Editor() {
                         id="content-area"
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
-                        placeholder="Start writing your thoughts..."
+                        placeholder={t('editor.contentPlaceholder')}
                         className="w-full h-full min-h-[500px] p-6 bg-transparent border-none outline-none resize-y font-serif text-lg leading-relaxed text-foreground/90"
                     />
                 )}
@@ -236,14 +242,14 @@ export default function Editor() {
         <div className="space-y-6">
             <div className="bg-card border border-border rounded-xl p-6 shadow-sm space-y-6 sticky top-32">
                 <h3 className="font-bold text-foreground text-sm flex items-center gap-2 border-b border-border pb-4">
-                    <Layout size={16} className="text-primary" /> Post Settings
+                    <Layout size={16} className="text-primary" /> {t('editor.settings')}
                 </h3>
 
                 {/* Status & Visibility Control - ENHANCED */}
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                            Visibility <span className="text-xs font-normal normal-case text-primary">(Admin Control)</span>
+                            {t('editor.visibility')} <span className="text-xs font-normal normal-case text-primary">({t('editor.adminControl')})</span>
                         </label>
                         <div className="grid grid-cols-2 gap-2">
                             <button
@@ -255,7 +261,7 @@ export default function Editor() {
                                         : "bg-transparent border-border text-muted-foreground hover:bg-secondary"
                                 )}
                             >
-                                <Globe size={16} /> Public
+                                <Globe size={16} /> {t('editor.public')}
                             </button>
                             <button
                                 onClick={() => setIsPublic(false)}
@@ -266,62 +272,93 @@ export default function Editor() {
                                         : "bg-transparent border-border text-muted-foreground hover:bg-secondary"
                                 )}
                             >
-                                <Lock size={16} /> Private
+                                <Lock size={16} /> {t('editor.private')}
                             </button>
                         </div>
                         <p className="text-[10px] text-muted-foreground leading-tight bg-secondary/30 p-2 rounded-md border border-border/50">
                             {isPublic 
-                                ? "Visible to everyone on the repository." 
-                                : "Hidden from public. Only visible to you in dashboard."}
+                                ? t('editor.publicDesc')
+                                : t('editor.privateDesc')}
                         </p>
                     </div>
                 </div>
 
-                {/* Classification */}
+                {/* Classification - IMPROVED WITH VISIBLE CHIPS */}
                 <div className="space-y-4 pt-4 border-t border-border">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Category</label>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t('editor.category')}</label>
                         <div className="relative">
-                            <select 
+                            <input 
+                                list="category-suggestions"
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value)}
-                                className="w-full bg-secondary/50 border border-transparent rounded-lg p-3 pr-8 text-sm font-medium focus:ring-1 focus:ring-primary/20 focus:border-primary outline-none appearance-none transition-all cursor-pointer hover:bg-secondary"
-                            >
-                                <option value="Catatan">Catatan (Notes)</option>
-                                <option value="Penelitian">Penelitian (Research)</option>
-                                <option value="Bahasan">Bahasan (Discussion)</option>
-                            </select>
-                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={14} />
+                                className="w-full bg-secondary/50 border border-transparent rounded-lg p-3 text-sm font-medium focus:ring-1 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                placeholder={t('editor.selectOrType')}
+                            />
+                            <datalist id="category-suggestions">
+                                {CATEGORY_SUGGESTIONS.map(cat => <option key={cat} value={cat} />)}
+                            </datalist>
+                        </div>
+                        {/* Visible Chips for Quick Select */}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {CATEGORY_SUGGESTIONS.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setCategory(cat)}
+                                    className={cn(
+                                        "px-2 py-1 rounded-md text-[10px] font-bold border transition-all",
+                                        category === cat 
+                                            ? "bg-primary/10 border-primary text-primary" 
+                                            : "bg-transparent border-border text-muted-foreground hover:bg-secondary"
+                                    )}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Context / Subcategory</label>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t('editor.subcategory')}</label>
                         <div className="relative">
-                            <select 
+                            <input 
+                                list="subcategory-suggestions"
                                 value={subcategory}
                                 onChange={(e) => setSubcategory(e.target.value)}
-                                className="w-full bg-secondary/50 border border-transparent rounded-lg p-3 pr-8 text-sm font-medium focus:ring-1 focus:ring-primary/20 focus:border-primary outline-none appearance-none transition-all cursor-pointer hover:bg-secondary"
-                            >
-                                <option value="">-- Select Context --</option>
-                                <option value="Agama">Agama (Religion)</option>
-                                <option value="Sains">Sains (Science)</option>
-                                <option value="Filsafat">Filsafat (Philosophy)</option>
-                                <option value="Teknologi">Teknologi (Technology)</option>
-                                <option value="Umum">Umum (General)</option>
-                            </select>
-                            <Hash className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" size={14} />
+                                className="w-full bg-secondary/50 border border-transparent rounded-lg p-3 text-sm font-medium focus:ring-1 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                placeholder={t('editor.selectOrType')}
+                            />
+                            <datalist id="subcategory-suggestions">
+                                {SUBCATEGORY_SUGGESTIONS.map(sub => <option key={sub} value={sub} />)}
+                            </datalist>
+                        </div>
+                         {/* Visible Chips for Quick Select */}
+                         <div className="flex flex-wrap gap-2 mt-2">
+                            {SUBCATEGORY_SUGGESTIONS.map(sub => (
+                                <button
+                                    key={sub}
+                                    onClick={() => setSubcategory(sub)}
+                                    className={cn(
+                                        "px-2 py-1 rounded-md text-[10px] font-bold border transition-all",
+                                        subcategory === sub 
+                                            ? "bg-primary/10 border-primary text-primary" 
+                                            : "bg-transparent border-border text-muted-foreground hover:bg-secondary"
+                                    )}
+                                >
+                                    {sub}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 </div>
 
                 {/* Excerpt */}
                 <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Excerpt (Short Description)</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t('editor.excerpt')}</label>
                     <textarea
                         value={excerpt}
                         onChange={(e) => setExcerpt(e.target.value)}
-                        placeholder="Write a short summary for the card preview..."
+                        placeholder={t('editor.excerptPlaceholder')}
                         rows={4}
                         className="w-full bg-secondary/50 border border-transparent rounded-lg p-3 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
                     />
@@ -334,7 +371,7 @@ export default function Editor() {
                             onClick={handleDelete}
                             className="w-full py-3 rounded-lg border border-destructive/20 text-destructive hover:bg-destructive/5 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
                         >
-                            <Trash2 size={14} /> Delete Post
+                            <Trash2 size={14} /> {t('editor.delete')}
                         </button>
                     </div>
                 )}

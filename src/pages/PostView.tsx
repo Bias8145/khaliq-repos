@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase, type Post } from '../lib/supabase';
 import { format } from 'date-fns';
-import { ArrowLeft, Edit, Clock, Share2, Printer, Heart, Link as LinkIcon, Twitter, Linkedin, MessageCircle, Download, ImageIcon, X, Loader2, Feather, User, Send, Check, Moon, Sun, RefreshCw, Maximize, Smartphone, Square, Layout, MousePointerClick, TextCursorInput } from 'lucide-react';
+import { ArrowLeft, Edit, Clock, Share2, Printer, Heart, Link as LinkIcon, Twitter, Linkedin, MessageCircle, Download, ImageIcon, X, Loader2, Feather, Send, Check, Moon, Sun, RefreshCw, Maximize, Smartphone, Square, Layout, MousePointerClick, TextCursorInput, Globe } from 'lucide-react';
 import { calculateReadingTime } from '../lib/utils';
 import { motion, useScroll, useSpring, AnimatePresence } from 'framer-motion';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
@@ -46,13 +46,28 @@ export default function PostView() {
     const fetchPost = async () => {
       if (!id) return;
       
-      const likedKey = `liked_post_${id}`;
-      if (localStorage.getItem(likedKey)) setLiked(true);
+      // Get client ID for likes
+      let clientId = localStorage.getItem('khaliq_client_id');
+      if (!clientId) {
+        clientId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('khaliq_client_id', clientId);
+      }
 
+      // Check if liked via DB
+      const { data: likeData } = await supabase
+        .from('post_likes_log')
+        .select('id')
+        .eq('post_id', id)
+        .eq('client_id', clientId)
+        .single();
+      
+      if (likeData) setLiked(true);
+
+      // Increment View Count (Optimized to run once per session/post)
       const viewedKey = `viewed_post_${id}`;
-      if (!localStorage.getItem(viewedKey)) {
+      if (!sessionStorage.getItem(viewedKey)) {
         await supabase.rpc('increment_view_count', { post_id: id });
-        localStorage.setItem(viewedKey, 'true');
+        sessionStorage.setItem(viewedKey, 'true');
       }
 
       const { data } = await supabase.from('posts').select('*').eq('id', id).single();
@@ -60,7 +75,6 @@ export default function PostView() {
       if (data) {
         setPost(data);
         setReadingTime(calculateReadingTime(data.content));
-        // Initial excerpt is default, but will be overridden if selection exists when opening modal
         setCustomExcerpt(data.excerpt || data.content.substring(0, 120).replace(/[#*`]/g, '') + "...");
         document.title = `${data.title} | Bias Fajar Khaliq`;
 
@@ -95,7 +109,6 @@ export default function PostView() {
     }
   }, [showVisualShare, isSelectingText]);
 
-  // Construct the canonical URL for sharing
   const getShareUrl = () => {
     if (!id) return window.location.href;
     return `${window.location.origin}/post/${id}`;
@@ -143,11 +156,25 @@ export default function PostView() {
   };
 
   const handleLike = async () => {
-    if (!id || liked) return;
-    setLiked(true);
-    if (post) setPost({ ...post, likes: (post.likes || 0) + 1 });
-    localStorage.setItem(`liked_post_${id}`, 'true');
-    try { await supabase.rpc('increment_likes', { post_id: id }); } catch (error) { console.error(error); }
+    if (!id) return;
+    
+    const clientId = localStorage.getItem('khaliq_client_id') || 'unknown';
+    
+    // Optimistic Update
+    const newLikedState = !liked;
+    setLiked(newLikedState);
+    if (post) {
+        setPost({ ...post, likes: Math.max(0, (post.likes || 0) + (newLikedState ? 1 : -1)) });
+    }
+
+    try { 
+        await supabase.rpc('toggle_like', { p_id: id, c_id: clientId }); 
+    } catch (error) { 
+        console.error(error); 
+        // Revert on error
+        setLiked(!newLikedState);
+        if (post) setPost({ ...post, likes: Math.max(0, (post.likes || 0) + (newLikedState ? -1 : 1)) });
+    }
   };
 
   const handleDownload = () => {
@@ -165,18 +192,14 @@ export default function PostView() {
 
   const generateImageBlob = async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
-    
-    // Wait a moment for fonts/images to fully settle
     await new Promise(resolve => setTimeout(resolve, 100));
-
     const canvas = await html2canvas(cardRef.current, {
-        scale: 3, // Higher scale for better quality
-        backgroundColor: cardTheme === 'dark' ? '#18181B' : '#FAFAFA',
+        scale: 3, 
+        backgroundColor: '#18181B', // Force dark background
         useCORS: true,
         logging: false,
         allowTaint: true,
     });
-    
     return new Promise(resolve => canvas.toBlob(resolve, 'image/png', 1.0));
   };
 
@@ -219,19 +242,16 @@ export default function PostView() {
             await navigator.share(shareData);
             toast("Shared successfully", "success");
         } else {
-            // Fallback if file sharing not supported
             handleNativeShare();
         }
     } catch (error) {
         console.error("Smart share failed", error);
-        // Fallback
         handleNativeShare();
     } finally {
         setGeneratingImage(false);
     }
   };
 
-  // Selection Mode Handler
   const startSelectionMode = () => {
     setShowVisualShare(false);
     setIsSelectingText(true);
@@ -305,7 +325,6 @@ export default function PostView() {
                     <motion.button 
                         whileTap={{ scale: 0.95 }}
                         onClick={handleLike}
-                        disabled={liked}
                         className={cn(
                             "flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-bold",
                             liked ? "bg-red-50 text-red-500" : "bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-red-500"
@@ -439,37 +458,9 @@ export default function PostView() {
                     className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
                 >
                     <div className="relative w-full max-w-2xl flex flex-col items-center my-auto">
-                        <button 
-                            onClick={() => setShowVisualShare(false)}
-                            className="absolute -top-12 right-0 p-2 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
-                        >
-                            <X size={24} />
-                        </button>
-
                         {/* Controls */}
                         <div className="w-full bg-card border border-border rounded-2xl p-5 mb-6 shadow-lg space-y-5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Theme Selector */}
-                                <div className="space-y-2">
-                                    <span className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                                        <Layout size={14} /> {t('post.cardTheme')}
-                                    </span>
-                                    <div className="flex bg-secondary rounded-lg p-1">
-                                        <button 
-                                            onClick={() => setCardTheme('light')}
-                                            className={cn("flex-1 py-2 rounded-md transition-all flex items-center justify-center gap-2 text-xs font-bold", cardTheme === 'light' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-                                        >
-                                            <Sun size={14} /> Light
-                                        </button>
-                                        <button 
-                                            onClick={() => setCardTheme('dark')}
-                                            className={cn("flex-1 py-2 rounded-md transition-all flex items-center justify-center gap-2 text-xs font-bold", cardTheme === 'dark' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-                                        >
-                                            <Moon size={14} /> Dark
-                                        </button>
-                                    </div>
-                                </div>
-
                                 {/* Size Selector */}
                                 <div className="space-y-2">
                                     <span className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
@@ -490,161 +481,88 @@ export default function PostView() {
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            {/* Text Editor */}
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-xs font-bold uppercase text-muted-foreground">{t('post.customizeText')}</span>
-                                    <div className="flex items-center gap-3">
-                                        <button 
-                                            onClick={startSelectionMode}
-                                            className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline bg-primary/10 px-2 py-1 rounded-md"
-                                        >
-                                            <MousePointerClick size={12} /> {t('post.selectFromPage')}
-                                        </button>
-                                        <button 
-                                            onClick={() => setCustomExcerpt(post.excerpt || post.content.substring(0, 120))}
-                                            className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 hover:text-foreground"
-                                        >
-                                            <RefreshCw size={10} /> {t('post.reset')}
-                                        </button>
+
+                                {/* Text Editor */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold uppercase text-muted-foreground">{t('post.customizeText')}</span>
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                                onClick={startSelectionMode}
+                                                className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline bg-primary/10 px-2 py-1 rounded-md"
+                                            >
+                                                <MousePointerClick size={12} /> {t('post.selectFromPage')}
+                                            </button>
+                                            <button 
+                                                onClick={() => setCustomExcerpt(post.excerpt || post.content.substring(0, 120))}
+                                                className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 hover:text-foreground"
+                                            >
+                                                <RefreshCw size={10} /> {t('post.reset')}
+                                            </button>
+                                        </div>
                                     </div>
+                                    <textarea 
+                                        value={customExcerpt}
+                                        onChange={(e) => setCustomExcerpt(e.target.value)}
+                                        className="w-full bg-secondary/50 border border-transparent rounded-lg p-3 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none h-24"
+                                        placeholder="Enter text to display on card..."
+                                    />
                                 </div>
-                                <textarea 
-                                    value={customExcerpt}
-                                    onChange={(e) => setCustomExcerpt(e.target.value)}
-                                    className="w-full bg-secondary/50 border border-transparent rounded-lg p-3 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none h-24"
-                                    placeholder="Enter text to display on card..."
-                                />
                             </div>
                         </div>
 
-                        {/* The Card to be Captured */}
-                        <div className="w-full flex justify-center overflow-hidden rounded-xl shadow-2xl border border-border/50">
+                        {/* REBUILT SHARE CARD - Matching Reference Image */}
+                        <div className="w-full flex justify-center mb-6">
                             <div 
                                 ref={cardRef}
                                 className={cn(
-                                    "relative w-full flex flex-col p-8 md:p-12 justify-between transition-colors duration-300",
-                                    cardTheme === 'dark' ? "bg-[#18181B] text-[#F4F4F5]" : "bg-[#FAFAFA] text-[#18181B]",
+                                    "relative w-full flex flex-col items-center justify-center text-center overflow-hidden bg-[#18181B] text-white p-12",
                                     aspectRatio === 'square' ? "aspect-square" : 
                                     aspectRatio === 'portrait' ? "aspect-[4/5]" : 
                                     aspectRatio === 'story' ? "aspect-[9/16]" : 
                                     "min-h-[500px] h-auto"
                                 )}
-                                style={{ fontFamily: 'Inter, sans-serif' }}
+                                style={{ 
+                                    borderRadius: '24px',
+                                    border: '1px solid #27272A',
+                                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                                }}
                             >
                                 {/* Background Elements */}
-                                {cardTheme === 'dark' ? (
-                                    <>
-                                        <div className="absolute inset-0 bg-gradient-to-br from-[#18181B] via-[#1c1c21] to-[#000000] z-0"></div>
-                                        <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-[#C4B59D] rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none opacity-[0.07]"></div>
-                                        <div className="absolute bottom-0 left-0 w-[60%] h-[60%] bg-[#C4B59D] rounded-full blur-[120px] translate-y-1/3 -translate-x-1/3 pointer-events-none opacity-[0.05]"></div>
-                                        <div className="absolute inset-4 md:inset-6 border border-[#C4B59D]/10 rounded-xl z-10 pointer-events-none"></div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="absolute inset-0 bg-[#FAFAFA] z-0"></div>
-                                        <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-[#C4B59D] rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none opacity-[0.15]"></div>
-                                        <div className="absolute inset-4 md:inset-6 border border-[#18181B]/5 rounded-xl z-10 pointer-events-none"></div>
-                                    </>
-                                )}
-
-                                {/* Header */}
-                                <div className="relative z-20 pt-2 px-2">
-                                    <div className="flex items-center gap-3 mb-8">
-                                        <div className={cn(
-                                            "w-10 h-10 rounded-full flex items-center justify-center border",
-                                            cardTheme === 'dark' 
-                                                ? "bg-[#C4B59D]/10 text-[#C4B59D] border-[#C4B59D]/20" 
-                                                : "bg-[#18181B]/5 text-[#18181B] border-[#18181B]/10"
-                                        )}>
-                                            <Feather size={18} />
-                                        </div>
-                                        <div>
-                                            <p className={cn(
-                                                "text-[10px] font-bold uppercase tracking-[0.2em]",
-                                                cardTheme === 'dark' ? "text-[#C4B59D]" : "text-[#18181B]"
-                                            )}>Khaliq Repository</p>
-                                            <p className={cn(
-                                                "text-[8px] uppercase tracking-wider font-medium",
-                                                cardTheme === 'dark' ? "text-white/40" : "text-black/40"
-                                            )}>Digital Garden & Archive</p>
-                                        </div>
-                                    </div>
-
-                                    <h2 className={cn(
-                                        "text-3xl md:text-4xl font-serif font-bold leading-[1.2] mb-4 tracking-tight break-words whitespace-normal",
-                                        cardTheme === 'dark' ? "text-[#F4F4F5]" : "text-[#18181B]"
-                                    )}>
-                                        {post.title}
-                                    </h2>
+                                <div className="absolute inset-0 bg-gradient-to-b from-[#27272A] to-[#18181B] opacity-50"></div>
+                                
+                                {/* Top Feather Icon */}
+                                <div className="relative z-10 w-16 h-16 rounded-full border border-white/10 flex items-center justify-center mb-8 bg-white/5 backdrop-blur-sm">
+                                    <Feather size={28} className="text-[#D4C5A9]" />
                                 </div>
 
-                                {/* Content / Excerpt */}
-                                <div className="relative z-20 px-2 flex-grow flex items-center py-6">
-                                    <div className="relative w-full">
-                                        <span className={cn(
-                                            "absolute -top-6 -left-4 text-6xl font-serif leading-none select-none",
-                                            cardTheme === 'dark' ? "text-[#C4B59D]/20" : "text-[#18181B]/10"
-                                        )}>"</span>
-                                        <p className={cn(
-                                            "text-lg md:text-xl font-light leading-relaxed italic relative z-10 whitespace-pre-wrap break-words",
-                                            cardTheme === 'dark' ? "text-[#A1A1AA]" : "text-[#52525B]"
-                                        )}>
-                                            {customExcerpt}
-                                        </p>
-                                    </div>
+                                {/* Main Title */}
+                                <h2 className="relative z-10 text-4xl md:text-5xl font-bold tracking-tight mb-2 text-white font-sans">
+                                    {post.title}
+                                </h2>
+                                <p className="relative z-10 text-xs font-bold tracking-[0.3em] text-[#D4C5A9] uppercase mb-12">
+                                    {post.category || 'Digital Garden'}
+                                </p>
+
+                                {/* Quote Section */}
+                                <div className="relative z-10 max-w-lg mx-auto">
+                                    <p className="text-lg md:text-xl leading-relaxed text-gray-300 font-serif italic">
+                                        "{customExcerpt}"
+                                    </p>
                                 </div>
 
-                                {/* Footer */}
-                                <div className="relative z-20 pb-2 px-2 mt-auto">
-                                    <div className={cn(
-                                        "flex justify-between items-end border-t pt-6",
-                                        cardTheme === 'dark' ? "border-[#C4B59D]/20" : "border-[#18181B]/10"
-                                    )}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={cn(
-                                                "w-10 h-10 rounded-full flex items-center justify-center shadow-lg",
-                                                cardTheme === 'dark' 
-                                                    ? "bg-gradient-to-br from-[#C4B59D] to-[#8E7F65] text-[#18181B]" 
-                                                    : "bg-[#18181B] text-[#FAFAFA]"
-                                            )}>
-                                                <User size={20} />
-                                            </div>
-                                            <div>
-                                                <p className={cn(
-                                                    "font-bold text-xs md:text-sm tracking-wide",
-                                                    cardTheme === 'dark' ? "text-[#F4F4F5]" : "text-[#18181B]"
-                                                )}>Bias Fajar Khaliq</p>
-                                                <p className={cn(
-                                                    "text-[8px] md:text-[10px] uppercase tracking-wider font-medium",
-                                                    cardTheme === 'dark' ? "text-[#C4B59D]" : "text-[#52525B]"
-                                                )}>Writer & Meaning-seeker</p>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="text-right">
-                                            <p className={cn(
-                                                "text-[8px] md:text-[10px] uppercase tracking-wider mb-1 font-medium",
-                                                cardTheme === 'dark' ? "text-white/40" : "text-black/40"
-                                            )}>{format(new Date(post.created_at), 'MMMM d, yyyy')}</p>
-                                            <div className={cn(
-                                                "flex items-center justify-end gap-1.5",
-                                                cardTheme === 'dark' ? "text-[#C4B59D]" : "text-[#18181B]"
-                                            )}>
-                                                <p className="text-[10px] md:text-xs font-bold">
-                                                    {post.category || 'Research'} • {readingTime} min read
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                {/* Footer / URL */}
+                                <div className="relative z-10 mt-16 pt-8 border-t border-white/10 w-full max-w-xs flex items-center justify-center gap-2">
+                                    <Globe size={14} className="text-[#D4C5A9]" />
+                                    <span className="text-xs font-bold tracking-widest text-[#D4C5A9] uppercase">
+                                        khaliq-repos.pages.dev
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="mt-8 flex flex-col md:flex-row gap-4 w-full justify-center">
+                        <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
                             <button 
                                 onClick={handleSmartShare}
                                 disabled={generatingImage}

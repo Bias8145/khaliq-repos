@@ -7,7 +7,7 @@ export default function Footer() {
   const { t } = useLanguage();
 
   return (
-    <footer className="bg-card border-t border-border pt-10 pb-8 mt-auto">
+    <footer className="bg-card pt-12 pb-8 mt-auto rounded-t-[40px] border-t border-border shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)] relative z-10">
       <div className="max-w-6xl mx-auto px-6">
         
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 mb-10">

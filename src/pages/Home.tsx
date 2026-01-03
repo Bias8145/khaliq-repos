@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, BookOpen, Layers, Terminal, User, GraduationCap, Github, Cpu, Database, Globe, Smartphone, ExternalLink, Feather, Share2, X, Layout, Sun, Moon, Maximize, Square, RefreshCw, Send, Loader2, Download } from 'lucide-react';
+import { ArrowRight, BookOpen, Layers, Terminal, User, GraduationCap, Github, Cpu, Database, Globe, Smartphone, ExternalLink, Feather, Share2, X, Layout, Sun, Moon, Maximize, Square, RefreshCw, Send, Loader2, Download, TrendingUp, Flame } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../lib/language';
 import { cn } from '../lib/utils';
 import html2canvas from 'html2canvas';
 import { useToast } from '../components/ui/Toast';
+import { supabase, type Post } from '../lib/supabase';
 
 type AspectRatio = 'auto' | 'portrait' | 'square' | 'story';
 
@@ -20,13 +21,30 @@ export default function Home() {
   const [promoText, setPromoText] = useState(t('home.promote.defaultText'));
   const [generating, setGenerating] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  
+  // Trending Posts
+  const [trendingPosts, setTrendingPosts] = useState<Post[]>([]);
+
+  useEffect(() => {
+    const fetchTrending = async () => {
+        const { data } = await supabase
+            .from('posts')
+            .select('id, title, category, view_count')
+            .eq('is_public', true)
+            .order('view_count', { ascending: false })
+            .limit(3);
+        
+        if (data) setTrendingPosts(data);
+    };
+    fetchTrending();
+  }, []);
 
   const generateImageBlob = async (): Promise<Blob | null> => {
     if (!cardRef.current) return null;
     await new Promise(resolve => setTimeout(resolve, 100)); // Wait for render
     const canvas = await html2canvas(cardRef.current, {
         scale: 3,
-        backgroundColor: cardTheme === 'dark' ? '#18181B' : '#FAFAFA',
+        backgroundColor: '#18181B', // Force dark background for consistency
         useCORS: true,
         logging: false,
         allowTaint: true,
@@ -69,7 +87,6 @@ export default function Home() {
             await navigator.share(shareData);
             toast("Shared successfully", "success");
         } else {
-            // Fallback
             if (navigator.share) {
                 await navigator.share({
                     title: "Bias Fajar Khaliq",
@@ -92,46 +109,78 @@ export default function Home() {
   return (
     <div className="min-h-screen pt-24 md:pt-32 pb-16 px-5 md:px-8 max-w-6xl mx-auto">
       
-      {/* Hero Section */}
+      {/* Hero Section - Redesigned (Elegant, Contained, No Underline) */}
       <section className="mb-20 md:mb-28 text-center md:text-left relative">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="max-w-3xl mx-auto md:mx-0 relative z-10"
+          className="max-w-5xl mx-auto md:mx-0 relative z-10"
         >
-          <div className="inline-flex items-center gap-3 px-4 py-1.5 mb-6 md:mb-8 rounded-full bg-secondary/50 text-foreground text-[10px] md:text-[11px] font-bold tracking-[0.2em] uppercase border border-border backdrop-blur-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-            {t('home.badge')}
-          </div>
-          
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 md:mb-8 leading-[1.1] tracking-tight">
-            {t('home.title')} <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-amber-600 font-serif italic pr-2">
-              {t('home.titleHighlight')}
-            </span>
-          </h1>
-          
-          <p className="text-base md:text-lg text-muted-foreground mb-8 md:mb-10 leading-relaxed max-w-xl mx-auto md:mx-0 font-light">
-            {t('home.subtitle')}
-          </p>
-          
-          <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-            <Link to="/repo" className="px-6 py-3 md:px-8 md:py-4 rounded-full bg-foreground text-background text-sm font-bold hover:bg-foreground/90 transition-all flex items-center gap-2 shadow-xl shadow-foreground/10 hover:-translate-y-1">
-              {t('home.explore')} <ArrowRight size={16} />
-            </Link>
-            <button 
-                onClick={() => setShowPromoteModal(true)}
-                className="px-6 py-3 md:px-8 md:py-4 rounded-full border border-border text-foreground text-sm font-bold hover:bg-secondary/50 transition-all backdrop-blur-sm flex items-center gap-2"
-            >
-              <Share2 size={16} /> {t('home.promoteBtn')}
-            </button>
+          {/* Elegant Panel Container */}
+          <div className="bg-card/40 backdrop-blur-sm border border-border/40 rounded-[32px] p-8 md:p-12 relative overflow-hidden shadow-2xl shadow-black/5">
+             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -z-10"></div>
+             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[80px] -z-10"></div>
+
+             <div className="inline-flex items-center gap-3 px-4 py-1.5 mb-8 rounded-full bg-background/50 text-foreground text-[10px] md:text-[11px] font-bold tracking-[0.2em] uppercase border border-border/50">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                {t('home.badge')}
+             </div>
+             
+             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-8 leading-[1.1] tracking-tight">
+                <span className="block text-foreground/90">{t('home.title')}</span>
+                <span className="block font-serif italic text-primary mt-2 font-medium">
+                    {t('home.titleHighlight')}
+                </span>
+             </h1>
+             
+             <p className="text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed max-w-2xl font-light">
+                {t('home.subtitle')}
+             </p>
+             
+             <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+                <Link to="/repo" className="px-8 py-4 rounded-full bg-foreground text-background text-sm font-bold hover:bg-foreground/90 transition-all flex items-center gap-2 shadow-xl shadow-foreground/10 hover:-translate-y-1">
+                  {t('home.explore')} <ArrowRight size={16} />
+                </Link>
+                <button 
+                    onClick={() => setShowPromoteModal(true)}
+                    className="px-8 py-4 rounded-full border border-border text-foreground text-sm font-bold hover:bg-secondary/50 transition-all backdrop-blur-sm flex items-center gap-2"
+                >
+                  <Share2 size={16} /> {t('home.promoteBtn')}
+                </button>
+             </div>
           </div>
         </motion.div>
-
-        {/* Abstract Background Elements */}
-        <div className="absolute top-0 right-0 w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-gradient-to-b from-primary/10 to-transparent rounded-full blur-[80px] md:blur-[120px] -z-10 opacity-60 pointer-events-none"></div>
       </section>
+
+      {/* Trending Section */}
+      {trendingPosts.length > 0 && (
+        <section className="mb-20">
+            <div className="flex items-center gap-2 mb-6 text-primary">
+                <Flame size={20} className="fill-current" />
+                <h2 className="text-sm font-bold uppercase tracking-widest">{t('home.trending')}</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {trendingPosts.map((post, i) => (
+                    <Link key={post.id} to={`/post/${post.id}`} className="group block">
+                        <div className="bg-card border border-border rounded-2xl p-6 hover:border-primary/30 transition-all hover:shadow-lg hover:shadow-primary/5 h-full flex flex-col justify-between">
+                            <div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 block">
+                                    0{i+1} &mdash; {post.category}
+                                </span>
+                                <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                                    {post.title}
+                                </h3>
+                            </div>
+                            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                                <TrendingUp size={14} /> {post.view_count} reads
+                            </div>
+                        </div>
+                    </Link>
+                ))}
+            </div>
+        </section>
+      )}
 
       {/* Feature Grid */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20 md:mb-28">
@@ -155,7 +204,7 @@ export default function Home() {
         />
       </section>
 
-      {/* Bento Grid - About Section */}
+      {/* About Section */}
       <section id="about" className="mb-24 scroll-mt-32">
         <div className="flex items-end justify-between mb-8 md:mb-10">
             <div>
@@ -166,7 +215,6 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-6 h-auto md:h-[600px]">
-            
             {/* Main Profile Card */}
             <div className="md:col-span-2 md:row-span-2 bg-card border border-border rounded-3xl p-6 md:p-10 relative overflow-hidden group hover:border-primary/30 transition-colors">
                 <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -175,11 +223,9 @@ export default function Home() {
                 
                 <div className="relative z-10 h-full flex flex-col justify-between">
                     <div>
-                        {/* Avatar */}
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-primary relative overflow-hidden">
+                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-secondary border border-primary/20 flex items-center justify-center text-primary relative overflow-hidden">
                                 <User size={32} className="relative z-10" />
-                                <div className="absolute inset-0 bg-primary/10 blur-xl"></div>
                             </div>
                             <div className="flex flex-col justify-center">
                                 <span className="text-xs font-bold text-primary uppercase tracking-wider mt-1">{t('home.hello')}</span>
@@ -201,7 +247,7 @@ export default function Home() {
             </div>
 
             {/* Education Card */}
-            <div className="bg-gradient-to-br from-primary/10 to-background border border-border rounded-3xl p-6 md:p-8 flex flex-col justify-center hover:border-primary/30 transition-colors relative overflow-hidden group">
+            <div className="bg-secondary/30 border border-border rounded-3xl p-6 md:p-8 flex flex-col justify-center hover:border-primary/30 transition-colors relative overflow-hidden group">
                 <div className="absolute -bottom-4 -right-4 text-primary/10 group-hover:text-primary/20 transition-colors rotate-[-15deg]">
                     <GraduationCap size={120} />
                 </div>
@@ -215,7 +261,7 @@ export default function Home() {
             </div>
 
             {/* Open Source / XDA Card */}
-            <div className="bg-gradient-to-br from-primary/10 to-background border border-border rounded-3xl p-6 md:p-8 flex flex-col justify-center relative overflow-hidden group">
+            <div className="bg-secondary/30 border border-border rounded-3xl p-6 md:p-8 flex flex-col justify-center relative overflow-hidden group">
                 <div className="absolute top-4 right-4 text-primary/20 group-hover:text-primary/40 transition-colors">
                     <Terminal size={48} />
                 </div>
@@ -236,7 +282,7 @@ export default function Home() {
                     </div>
                     
                     <div className="flex gap-3">
-                        <a href="https://xdaforums.com/m/khaliq-morpheus.13212421/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-foreground bg-secondary/80 px-3 py-2 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+                        <a href="https://xdaforums.com/m/khaliq-morpheus.13212421/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-foreground bg-background px-3 py-2 rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors border border-border">
                             {t('home.xdaProfile')} <ExternalLink size={12} />
                         </a>
                         <a href="https://github.com/Bias8145" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-primary px-2 py-2 hover:underline">
@@ -259,13 +305,6 @@ export default function Home() {
                 className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
             >
                 <div className="relative w-full max-w-2xl flex flex-col items-center my-auto">
-                    <button 
-                        onClick={() => setShowPromoteModal(false)}
-                        className="absolute -top-12 right-0 p-2 text-muted-foreground hover:text-foreground transition-colors bg-secondary/50 rounded-full"
-                    >
-                        <X size={24} />
-                    </button>
-
                     <div className="text-center mb-6">
                         <h2 className="text-2xl font-bold text-foreground">{t('home.promote.title')}</h2>
                         <p className="text-muted-foreground text-sm">{t('home.promote.desc')}</p>
@@ -274,27 +313,6 @@ export default function Home() {
                     {/* Controls */}
                     <div className="w-full bg-card border border-border rounded-2xl p-5 mb-6 shadow-lg space-y-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Theme Selector */}
-                            <div className="space-y-2">
-                                <span className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                                    <Layout size={14} /> {t('post.cardTheme')}
-                                </span>
-                                <div className="flex bg-secondary rounded-lg p-1">
-                                    <button 
-                                        onClick={() => setCardTheme('light')}
-                                        className={cn("flex-1 py-2 rounded-md transition-all flex items-center justify-center gap-2 text-xs font-bold", cardTheme === 'light' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-                                    >
-                                        <Sun size={14} /> Light
-                                    </button>
-                                    <button 
-                                        onClick={() => setCardTheme('dark')}
-                                        className={cn("flex-1 py-2 rounded-md transition-all flex items-center justify-center gap-2 text-xs font-bold", cardTheme === 'dark' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-                                    >
-                                        <Moon size={14} /> Dark
-                                    </button>
-                                </div>
-                            </div>
-
                             {/* Size Selector */}
                             <div className="space-y-2">
                                 <span className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
@@ -315,111 +333,80 @@ export default function Home() {
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                        
-                        {/* Text Editor */}
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs font-bold uppercase text-muted-foreground">{t('home.promote.customize')}</span>
-                                <button 
-                                    onClick={() => setPromoText(t('home.promote.defaultText'))}
-                                    className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 hover:text-foreground"
-                                >
-                                    <RefreshCw size={10} /> {t('post.reset')}
-                                </button>
+
+                            {/* Text Editor */}
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold uppercase text-muted-foreground">{t('home.promote.customize')}</span>
+                                    <button 
+                                        onClick={() => setPromoText(t('home.promote.defaultText'))}
+                                        className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 hover:text-foreground"
+                                    >
+                                        <RefreshCw size={10} /> {t('post.reset')}
+                                    </button>
+                                </div>
+                                <textarea 
+                                    value={promoText}
+                                    onChange={(e) => setPromoText(e.target.value)}
+                                    className="w-full bg-secondary/50 border border-transparent rounded-lg p-3 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none h-20"
+                                    placeholder="Enter your promotional message..."
+                                />
                             </div>
-                            <textarea 
-                                value={promoText}
-                                onChange={(e) => setPromoText(e.target.value)}
-                                className="w-full bg-secondary/50 border border-transparent rounded-lg p-3 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none h-24"
-                                placeholder="Enter your promotional message..."
-                            />
                         </div>
                     </div>
 
-                    {/* The Card */}
-                    <div className="w-full flex justify-center overflow-hidden rounded-xl shadow-2xl border border-border/50">
+                    {/* REBUILT SHARE CARD - Matching Reference Image */}
+                    <div className="w-full flex justify-center mb-6">
                         <div 
                             ref={cardRef}
                             className={cn(
-                                "relative w-full flex flex-col p-8 md:p-12 justify-between transition-colors duration-300",
-                                cardTheme === 'dark' ? "bg-[#18181B] text-[#F4F4F5]" : "bg-[#FAFAFA] text-[#18181B]",
+                                "relative w-full flex flex-col items-center justify-center text-center overflow-hidden bg-[#18181B] text-white p-12",
                                 aspectRatio === 'square' ? "aspect-square" : 
                                 aspectRatio === 'portrait' ? "aspect-[4/5]" : 
                                 aspectRatio === 'story' ? "aspect-[9/16]" : 
                                 "min-h-[500px] h-auto"
                             )}
-                            style={{ fontFamily: 'Inter, sans-serif' }}
+                            style={{ 
+                                borderRadius: '24px',
+                                border: '1px solid #27272A',
+                                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                            }}
                         >
                             {/* Background Elements */}
-                            {cardTheme === 'dark' ? (
-                                <>
-                                    <div className="absolute inset-0 bg-gradient-to-br from-[#18181B] via-[#1c1c21] to-[#000000] z-0"></div>
-                                    <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-[#C4B59D] rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none opacity-[0.07]"></div>
-                                    <div className="absolute bottom-0 left-0 w-[60%] h-[60%] bg-[#C4B59D] rounded-full blur-[120px] translate-y-1/3 -translate-x-1/3 pointer-events-none opacity-[0.05]"></div>
-                                    <div className="absolute inset-4 md:inset-6 border border-[#C4B59D]/10 rounded-xl z-10 pointer-events-none"></div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="absolute inset-0 bg-[#FAFAFA] z-0"></div>
-                                    <div className="absolute top-0 right-0 w-[80%] h-[80%] bg-[#C4B59D] rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2 pointer-events-none opacity-[0.15]"></div>
-                                    <div className="absolute inset-4 md:inset-6 border border-[#18181B]/5 rounded-xl z-10 pointer-events-none"></div>
-                                </>
-                            )}
-
-                            {/* Header */}
-                            <div className="relative z-20 pt-2 px-2 text-center">
-                                <div className={cn(
-                                    "w-16 h-16 mx-auto rounded-full flex items-center justify-center border mb-6",
-                                    cardTheme === 'dark' 
-                                        ? "bg-[#C4B59D]/10 text-[#C4B59D] border-[#C4B59D]/20" 
-                                        : "bg-[#18181B]/5 text-[#18181B] border-[#18181B]/10"
-                                )}>
-                                    <Feather size={32} />
-                                </div>
-                                <h2 className={cn(
-                                    "text-3xl md:text-4xl font-serif font-bold leading-[1.2] mb-2 tracking-tight",
-                                    cardTheme === 'dark' ? "text-[#F4F4F5]" : "text-[#18181B]"
-                                )}>
-                                    Bias Fajar Khaliq
-                                </h2>
-                                <p className={cn(
-                                    "text-xs font-bold uppercase tracking-[0.2em]",
-                                    cardTheme === 'dark' ? "text-[#C4B59D]" : "text-[#18181B]/60"
-                                )}>Digital Garden & Archive</p>
+                            <div className="absolute inset-0 bg-gradient-to-b from-[#27272A] to-[#18181B] opacity-50"></div>
+                            
+                            {/* Top Feather Icon */}
+                            <div className="relative z-10 w-16 h-16 rounded-full border border-white/10 flex items-center justify-center mb-8 bg-white/5 backdrop-blur-sm">
+                                <Feather size={28} className="text-[#D4C5A9]" />
                             </div>
 
-                            {/* Content */}
-                            <div className="relative z-20 px-2 flex-grow flex items-center justify-center py-8">
-                                <p className={cn(
-                                    "text-lg md:text-xl font-light leading-relaxed italic text-center max-w-md mx-auto",
-                                    cardTheme === 'dark' ? "text-[#A1A1AA]" : "text-[#52525B]"
-                                )}>
+                            {/* Main Title */}
+                            <h2 className="relative z-10 text-4xl md:text-5xl font-bold tracking-tight mb-2 text-white font-sans">
+                                Bias Fajar Khaliq
+                            </h2>
+                            <p className="relative z-10 text-xs font-bold tracking-[0.3em] text-[#D4C5A9] uppercase mb-12">
+                                Digital Garden & Archive
+                            </p>
+
+                            {/* Quote Section */}
+                            <div className="relative z-10 max-w-lg mx-auto">
+                                <p className="text-lg md:text-xl leading-relaxed text-gray-300 font-serif italic">
                                     "{promoText}"
                                 </p>
                             </div>
 
-                            {/* Footer */}
-                            <div className="relative z-20 pb-2 px-2 mt-auto">
-                                <div className={cn(
-                                    "flex justify-center items-center border-t pt-6",
-                                    cardTheme === 'dark' ? "border-[#C4B59D]/20" : "border-[#18181B]/10"
-                                )}>
-                                    <div className={cn(
-                                        "px-4 py-2 rounded-full text-xs font-bold tracking-wider uppercase flex items-center gap-2",
-                                        cardTheme === 'dark' 
-                                            ? "bg-[#C4B59D]/10 text-[#C4B59D]" 
-                                            : "bg-[#18181B] text-[#FAFAFA]"
-                                    )}>
-                                        <Globe size={12} /> khaliq-repos.pages.dev
-                                    </div>
-                                </div>
+                            {/* Footer / URL */}
+                            <div className="relative z-10 mt-16 pt-8 border-t border-white/10 w-full max-w-xs flex items-center justify-center gap-2">
+                                <Globe size={14} className="text-[#D4C5A9]" />
+                                <span className="text-xs font-bold tracking-widest text-[#D4C5A9] uppercase">
+                                    khaliq-repos.pages.dev
+                                </span>
                             </div>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="mt-8 flex flex-col md:flex-row gap-4 w-full justify-center">
+                    <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
                         <button 
                             onClick={handleSmartShare}
                             disabled={generating}

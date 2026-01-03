@@ -2,10 +2,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize Gemini
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-// Use a stable model version for better reliability on free tier
-export const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export const SYSTEM_PROMPT = `
 You are the intelligent assistant for "Khaliq Repository", a digital garden and portfolio belonging to Bias Fajar Khaliq.
@@ -16,29 +12,37 @@ ABOUT THE AUTHOR (Bias Fajar Khaliq):
 - Based in: Indonesia.
 - Education: Universitas Nusa Putra (Class of 2022).
 - Skills: AutoCAD, Data Analysis, HSE Compliance (K3), Custom ROM Development.
-- Community Presence: Active on XDA Developers as "Khaliq Morpheus" (https://xdaforums.com/m/khaliq-morpheus.13212421/).
-- Key Projects: 
-  - Development for All Pixel 6 Series (Oriole, Raven).
-  - Development for All Pixel 4 Series (Flame, Coral).
-  - Sunfish Project.
+- Community Presence: Active on XDA Developers as "Khaliq Morpheus".
+- Key Projects: Pixel 6 Series (Oriole, Raven), Pixel 4 Series.
 - Interests: Philosophy, Science, Technology, and System Optimization.
-- Personality: Professional, humble, low-profile, and helpful. He avoids boasting and prefers to let his work speak for itself.
 
 YOUR ROLE:
-- Answer questions about Bias Fajar Khaliq based on the info above.
-- Help users explore the repository (Notes, Research, Discussions).
-- Summarize technical or philosophical concepts if asked.
+- Answer questions about Bias Fajar Khaliq.
+- Help users explore the repository.
 - Be polite, concise, and professional.
-- If asked about something outside your knowledge, politely say you are focused on this repository.
+- Use a "Low Profile" but helpful tone.
+- If asked about specific posts, try to summarize the context if provided.
 
-TONE:
-- Professional but approachable.
-- Humble and understated (Low Profile).
-- Concise and accurate.
+IMPORTANT:
+- If asked about the website statistics or private data, politely decline.
+- Keep answers relatively short (under 3 paragraphs) unless asked for details.
 `;
 
 export async function generateAIResponse(prompt: string, context?: string) {
+  // 1. Validate Key
+  if (!API_KEY || API_KEY.includes("YOUR_API_KEY")) {
+    console.error("Gemini: Invalid API Key");
+    return "AI Configuration Error: Please check the VITE_GEMINI_API_KEY in your .env file.";
+  }
+
   try {
+    // 2. Initialize Client per request to ensure freshness
+    const genAI = new GoogleGenerativeAI(API_KEY);
+    
+    // 3. Use 'gemini-1.5-flash' (Fast & Efficient)
+    // If this fails, you might need to enable the API in Google Cloud Console
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
     const fullPrompt = `
       ${SYSTEM_PROMPT}
       
@@ -50,8 +54,20 @@ export async function generateAIResponse(prompt: string, context?: string) {
     const result = await model.generateContent(fullPrompt);
     const response = await result.response;
     return response.text();
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    return "I apologize, but I am currently unable to process your request due to a connection issue. Please try again in a moment.";
+  } catch (error: any) {
+    console.error("Gemini API Error:", error);
+    
+    // Detailed Error Handling
+    if (error.message?.includes("API key")) {
+        return "Error: The provided API Key is invalid or expired.";
+    }
+    if (error.message?.includes("fetch failed")) {
+        return "Network Error: Could not connect to Google AI. Please check your internet connection.";
+    }
+    if (error.message?.includes("candidate")) {
+        return "I apologize, but I cannot answer that specific query due to safety filters.";
+    }
+    
+    return "I apologize, but I am currently unable to process your request. Please try again later.";
   }
 }
